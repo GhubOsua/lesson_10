@@ -1,54 +1,78 @@
-# Урок 8. Написать скрипт на языке bash.
-В репозитори находятся файлы: [Сам скрипт](les8.sh), [лог файла](access-4560-644067.log), [файл строки](str_file), [msg](msg).
-## Описание решения задания:
-```
-написать скрипт для крона
-который раз в час присылает на заданную почту
-- X IP адресов (с наибольшим кол-вом запросов) с указанием кол-ва запросов c момента последнего запуска скрипта
-- Y запрашиваемых адресов (с наибольшим кол-вом запросов) с указанием кол-ва запросов c момента последнего запуска скрипта
-- все ошибки c момента последнего запуска
-- список всех кодов возврата с указанием их кол-ва с момента последнего запуска
-в письме должно быть прописан обрабатываемый временной диапазон
-должна быть реализована защита от мультизапуска
-```
-### 1. Устанавливаем yum install mailx && yum install postfix, для отправки почты;
-### 2. Правим vim /etc/postfix/main.cf. Выключаем SELinux;
-```
-Пришлось закомментировать #inet_protocols = all;
-setenforce 0
-```
-### 3. Создаем скрипт:
-#### 3.1. Создаем файл, в котором будет содержаться количество строк, это переменная file=/opt/str_file;
-#### 3.2. Далее создал функцию myfunc, которая выводит командой echo переменные x_ip y_adr z_err w_code time_1 time_2. В переменных содержится вывод скрипта для задания;
-#### 3.3. После объявляется вторая функция myfunc2, в ней генерируются переменные для myfunc на основе пост усливия if then else fi. Если существует файл str_file и его размер 0, тогда мы обрабатываем [лог файла](access-4560-644067.log) с 1 строки по последней. В конце условия мы запоминаем количество строк и записываем в [файл строки](str_file), чтобы начать следующий раз с последней обрабатываемой строки.
-#### 3.4. На пред. последних шагах мы используем командут mail для отправки вывода скрипта на почту root. Использовал -S sendwait, для того чтобы юнит service не сразу закрывал процесс отправки, иначе не выполянется инстукция отправки;
-#### 3.5. В конце мы исполюзуем trap, пока выполняется юнит service, не запустится второй раз скрипт [сам скрипт](les8.sh);
-### 4. Создание юнитов systemd .service и .timer:
+1 Сборка rpm пакета
 
-```
-[root@lesson8 vagrant]# cat  /etc/systemd/system/les8.service 
-[Unit]
-Description=Run script and sending mail
+1.1 Устанавливаем
+yum install -y \
+redhat-lsb-core \
+wget \
+rpmdevtools \
+rpm-build \
+createrepo \
+yum-utils
 
-[Service]
-Type=oneshot
-ExecStart=/opt/les8.sh
+1.2 Скачиваю nginx
+wget https://nginx.org/packages/centos/8/SRPMS/nginx-1.18.0-2.el8.ngx.src.rpm
 
-```
-```
-[root@lesson8 vagrant]# cat  /etc/systemd/system/les8.timer 
-[Unit]
-Description=Run script les8.sh every 15 second
+1.3 Распаковываем скаченный пакет. Далее командой rpm -i создается древо каталогов со spec и src файлами
+rpm -i nginx-1.14.1-1.el7_4.ngx.src.rpm
 
-[Timer]
-#Run every 15 second
-OnUnitActiveSec=15
-Unit=les8.service
+1.4 Скачиваем последний пакет openssl и распаковываем
+wget https://www.openssl.org/source/latest.tar.gz && tar -xvf latest.tar.gz
 
-[Install]
-WantedBy=timers.target
+1.5 Ставим все зависимости nginx
+yum-builddep rpmbuild/SPECS/nginx.spec -y
 
-```
-### 5. Перечитываем конфигурацию systemd командой: systemctl daemon-reload. Сначала запускаем юнит timer, после юнит service: systemctl start  les8.timer && systemctl start les8.service;
-### 6. Смотрим письмо [msg](msg) в /var/spool/mail/root. Проверяем на ошибки journalctl -xe либо по нашему юниту journalctl -u les8.service;
+1.6 Изменяем spec файл nginx, чтобы сборка rpm пакеты включала опцию ssl
+awk '{sub(/--with-debug/,"--with-openssl=/root/openssl-1.1.1i")}1' /root/rpmbuild/SPECS/nginx.spec > tmp && mv tmp /root/rpmbuild/SPECS/nginx.spec -f
+
+1.7 Процесс сборки пакета
+rpmbuild -bb /root/rpmbuild/SPECS/nginx.spec
+
+1.8 Процесс установки собранного rpm пакет
+ll /root/rpmbuild/RPMS/x86_64/
+yum localinstall /root/rpmbuild/RPMS/x86_64/nginx-1.18.0-2.el8.ngx.x86_64.rpm -y
+systemctl start nginx && systemctl status nginx
+
+2. Создание своего репозитория
+
+2.1 Создание каталога для собранного пакета nginx, чтобы был доступен из репозитория
+mkdir /usr/share/nginx/html/repo
+
+2.2 Копируем rpm пакет
+cp /root/rpmbuild/RPMS/x86_64/nginx-1.18.0-2.el8.ngx.x86_64.rpm /usr/share/nginx/html/repo
+
+2.3 Скачиваем и копируем в наш репозиторий, пакет percona-release-1.0-17.noarch.rpm. Noarch.rpm означает для любых архитектур
+wget https://downloads.percona.com/downloads/percona-release/percona-release-1.0-17/redhat/percona-release-1.0-17.noarch.rpm -O /usr/share/nginx/html/repo/percona-release-1.0-17.noarch.rpm
+
+2.4 Инициализация пакета
+createrepo /usr/share/nginx/html/repo/
+
+2.5 Добавим директиву autoindex on в /etc/nginx/conf.d/default.conf. Проверяем синтаксис nginx и перезапуск nginx
+awk '{sub (/index  index.html index.htm;/,"index  index.html index.htm;\n \tautoindex on;")}1' /etc/nginx/conf.d/default.conf > tmp && mv -f tmp /etc/nginx/conf.d/default.conf
+nginx -t
+nginx -s reload
+
+2.6 Добавим настройки нашего репозитория в /etc/yum.repos.d. 
+cat >> /etc/yum.repos.d/otus.repo << EOF
+
+[otus]
+name=otus-linux
+baseurl=http://localhost/repo
+gpgcheck=0
+enabled=1
+EOF
+>
+
+2.7 Установим percona-release
+yum install percona-release -y
+
+
+
+
+
+
+
+
+
+
+
 
