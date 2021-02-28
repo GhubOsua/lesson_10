@@ -14,7 +14,7 @@ yum-utils
 wget https://nginx.org/packages/centos/8/SRPMS/nginx-1.18.0-2.el8.ngx.src.rpm
 
 1.3 Распаковываем скаченный пакет. Далее командой rpm -i создается древо каталогов со spec и src файлами
-rpm -i nginx-1.14.1-1.el7_4.ngx.src.rpm
+rpm -i nginx-1.18.0-2.el8.ngx.src.rpm
 
 1.4 Скачиваем последний пакет openssl и распаковываем
 wget https://www.openssl.org/source/latest.tar.gz && tar -xvf latest.tar.gz
@@ -61,7 +61,7 @@ baseurl=http://localhost/repo
 gpgcheck=0
 enabled=1
 EOF
->
+
 
 2.7 Установим percona-release
 yum install percona-release -y
