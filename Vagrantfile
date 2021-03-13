@@ -7,6 +7,7 @@ Vagrant.configure("2") do |config|
 config.vm.box = "generic/centos8"
 config.vm.hostname = "lesson10"
 	#config.vm.network "private_network", ip: "192.168.11.150"
+	config.vm.provision "shell", path: "lesson_10.sh"
 	config.vm.define "lesson10"
 	config.vm.provider "virtualbox" do |vb|
 		vb.gui=false
