@@ -6,18 +6,17 @@ rpmdevtools \
 rpm-build \
 createrepo \
 yum-utils
-
+cd /root
 wget https://nginx.org/packages/centos/8/SRPMS/nginx-1.18.0-2.el8.ngx.src.rpm
+wget https://www.openssl.org/source/latest.tar.gz && tar -xvf latest.tar.gz
 
 rpm -i nginx-1.18.0-2.el8.ngx.src.rpm
 
-wget https://www.openssl.org/source/latest.tar.gz && tar -xvf latest.tar.gz
-
 yum-builddep /root/rpmbuild/SPECS/nginx.spec -y
 
-awk '{sub(/--with-debug/,"--with-openssl=/root/openssl-1.1.1j")}1' /root/rpmbuild/SPECS/nginx.spec > tmp && mv tmp /root/rpmbuild/SPECS/nginx.spec -f
+awk '{sub(/--with-debug/,"--with-openssl=/root/openssl-1.1.1k")}1' /root/rpmbuild/SPECS/nginx.spec > tmp && mv tmp /root/rpmbuild/SPECS/nginx.spec -f
 
-rpmbuild -bb /root/rpmbuild/SPECS/nginx.spec -y
+rpmbuild -bb /root/rpmbuild/SPECS/nginx.spec
 
 yum localinstall /root/rpmbuild/RPMS/x86_64/nginx-1.18.0-2.el8.ngx.x86_64.rpm -y
 

@@ -4,7 +4,8 @@
 ## 1 Сборка rpm пакета
 
 ### 1.1 Устанавливаем;
-```yum install -y \
+```
+yum install -y \
 redhat-lsb-core \
 wget \
 rpmdevtools \
@@ -30,7 +31,7 @@ yum-builddep rpmbuild/SPECS/nginx.spec -y
 ```
 ### 1.6 Изменяем spec файл nginx, чтобы сборка rpm пакеты включала опцию ssl;
 ```
-awk '{sub(/--with-debug/,"--with-openssl=/root/openssl-1.1.1i")}1' /root/rpmbuild/SPECS/nginx.spec > tmp && mv tmp /root/rpmbuild/SPECS/nginx.spec -f
+awk '{sub(/--with-debug/,"--with-openssl=/root/openssl-1.1.1k")}1' /root/rpmbuild/SPECS/nginx.spec > tmp && mv tmp /root/rpmbuild/SPECS/nginx.spec -f
 ```
 ### 1.7 Процесс сборки пакета;
 ```

@@ -16,5 +16,8 @@ config.vm.hostname = "lesson10"
 		#vb.customize ["storagectl", :id, "--name", "SATA", "--add", "sata" ]
 		#vb.customize ['storageattach', :id, '--storagectl', 'SATA', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', disk]
                end
-	config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+
+	config.vm.synced_folder "/home/s1steel/Документы/git_otus/lesson_10", "/vagrant", type: "rsync"
+	#config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+	config.vm.provision "shell", path: "lesson_10.sh"
 end
